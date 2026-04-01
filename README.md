@@ -48,3 +48,16 @@ Certaine macro sont disponible pour editer les fd_set.
 - FD_CLR(int fd, fd_set *set) - Elimine fd de l'ensemble
 - FD_ISSET(int fd, fd_set *set) - test pour savoir si fd fait parti de l'ensemble
 ```
+
+## poll() / ppoll()
+Ces fonctions ont la meme vocation que select()/pselect() leur differences sont donc similaire. A la difference qu'ils ne prennent qu'un tableau de structure `pollfd` representant les trois types de fd.
+structure de pollfd : 
+```
+struct pollfd {
+    int   fd;         /* Descripteur de fichier */
+    short events;     /* Événements attendus    */
+    short revents;    /* Événements détectés    */
+};
+```
+
+## epoll()
