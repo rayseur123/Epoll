@@ -40,3 +40,11 @@ Si aucun fd n'est disponible, alors l'ensemble concerné sera mis à NULL.
 `timeout` représente le temps max que select prendra si aucun fd n'est disponible.
 
 En résumé, select renvoie dans les trois fd set les fd disponibles à l'usage sur le moment. Si aucun n'est disponible, select/pselect attendra jusqu'au timeout si besoin.
+
+Certaine macro sont disponible pour editer les fd_set.
+```
+- FD_ZERO(fd_set *set) - initialise l'ensemble
+- FD_SET(int fd, fd_set *set) - Ajoute fd à l'ensemble
+- FD_CLR(int fd, fd_set *set) - Elimine fd de l'ensemble
+- FD_ISSET(int fd, fd_set *set) - test pour savoir si fd fait parti de l'ensemble
+```
