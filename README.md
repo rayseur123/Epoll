@@ -71,3 +71,4 @@ struct pollfd {
 Aussi, le parametre `nfds` ne signifie pas la meme chose. nfds represente ici simplement la taille du tableau passé en parametre.
 
 ## epoll()
+epoll() est une variante de poll qui a pour vocation de rester optimiser malgré le grand nombre de fd géré.
