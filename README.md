@@ -36,7 +36,7 @@ Si aucun fd n'est disponible, alors l'ensemble concerné sera mis à NULL.
 - `exceptfds` représente les fd d'exception (urgent / out-of-band / erreur)
 
 `nfds` est le numéro du plus grand descripteur de fichier des 3 ensembles, plus 1.
-**Pourquoi ?** Les fd_set etant stocké dans un tableau de bits (bitfield) de taille fixe (1024). Sans ce parametre, la totalité de ces bits devraient etre surveillé. Alors que la, la recherche est `0 - ndfs` plutot que `0 - 1024`. Ce qui reduit grandement le nombre d'iteration.
+**Pourquoi ?** Les fd_set étant stockés dans un tableau de bits (bitfield) de taille fixe (1024). Sans ce paramètre, la totalité de ces bits devraient être surveillée. Alors que là, la recherche est `0 - ndfs` plutôt que `0 - 1024`. Ce qui réduit grandement le nombre d'itérations.
 
 `timeout` représente le temps max que select prendra si aucun fd n'est disponible.
 
@@ -51,15 +51,15 @@ Certaine macro sont disponible pour editer les fd_set.
 ```
 
 ## poll() / ppoll()
-Avant tout, voici la declaration de ces deux fonctions : 
+Avant tout, voici la déclaration de ces deux fonctions :
 ```
 int poll(struct pollfd *fds, nfds_t nfds, int délai);
 
 int ppoll(struct pollfd *fds, nfds_t nfds, 
         const struct timespec *délai, const sigset_t *sigmask);
 ```
-Ces fonctions ont la meme vocation que select()/pselect() leur differences sont donc similaire. A la difference qu'ils ne prennent qu'un tableau de structure `pollfd` representant les trois types de fd.
-structure de pollfd : 
+Ces fonctions ont la même vocation que select()/pselect(), leurs différences sont donc similaires. A la différence qu'ils ne prennent qu'un tableau de structure `pollfd` représentant les trois types de fd.
+structure de pollfd :
 ```
 struct pollfd {
     int   fd;         /* Descripteur de fichier */
@@ -67,6 +67,7 @@ struct pollfd {
     short revents;    /* Événements détectés    */
 };
 ```
+
 Aussi, le parametre `nfds` ne signifie pas la meme chose. nfds represente ici simplement la taille du tableau passé en parametre.
 
 ## epoll()
