@@ -36,6 +36,7 @@ Si aucun fd n'est disponible, alors l'ensemble concerné sera mis à NULL.
 - `exceptfds` représente les fd d'exception (urgent / out-of-band / erreur)
 
 `nfds` est le numéro du plus grand descripteur de fichier des 3 ensembles, plus 1.
+**Pourquoi ?** Les fd_set etant stocké dans un tableau de bits (bitfield) de taille fixe (1024). Sans ce parametre, la totalité de ces bits devraient etre surveillé. Alors que la, la recherche est `0 - ndfs` plutot que `0 - 1024`. Ce qui reduit grandement le nombre d'iteration.
 
 `timeout` représente le temps max que select prendra si aucun fd n'est disponible.
 
@@ -50,6 +51,13 @@ Certaine macro sont disponible pour editer les fd_set.
 ```
 
 ## poll() / ppoll()
+Avant tout, voici la declaration de ces deux fonctions : 
+```
+int poll(struct pollfd *fds, nfds_t nfds, int délai);
+
+int ppoll(struct pollfd *fds, nfds_t nfds, 
+        const struct timespec *délai, const sigset_t *sigmask);
+```
 Ces fonctions ont la meme vocation que select()/pselect() leur differences sont donc similaire. A la difference qu'ils ne prennent qu'un tableau de structure `pollfd` representant les trois types de fd.
 structure de pollfd : 
 ```
@@ -59,5 +67,6 @@ struct pollfd {
     short revents;    /* Événements détectés    */
 };
 ```
+Aussi, le parametre `nfds` ne signifie pas la meme chose. nfds represente ici simplement la taille du tableau passé en parametre.
 
 ## epoll()
