@@ -74,3 +74,35 @@ Aussi, le parametre `nfds` ne signifie pas la meme chose. nfds represente ici si
 epoll est une variante de poll qui a pour vocation de rester optimiser malgré le grand nombre de fd géré.
 Ici epoll n'est donc pas une fonction mais une api. Donc un ensemble d'outil pour gerer des taches similaire a poll.
 
+### epoll_create()
+Permet de créer un fd pointant vers l'espace de surveillance alloué de taille `nb`. Cette taille n'est pas absolue, mais elle permet au noyau de dimensionner ses structures de façon plus optimisée.
+Déclaration de epoll_create() :
+```
+int epoll_create(int nb);
+```
+
+### epoll_ctl()
+Déclaration de epoll_ctl():
+```
+int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event); 
+```
+
+Cette fonction permet d'appliquer l'operation `op` au file descriptor `fd` de l'enssemble `epfd`.
+
+voici l'enssemble des operations possible :
+```
+EPOLL_CTL_ADD : Ajoute l'element **fd** dans l'enssembler epfd
+
+EPOLL_CTL_MOD : Change l'event associé au file descriptor **fd**
+
+EPOLL_CTL_DEL : Supprime l'element **fd** de l'enssemble **epfd**
+```
+
+Le dernier parametre est mask de bits permetant de lister les actions a surveiller pour ce fd.
+en voici la liste : 
+
+```
+EPOLLIN : Le file descriptor est disponible a la lecture
+EPOLLOUT : Le file descriptor est disponible a l'ecriture
+EPOLLRDHUP : 
+```
