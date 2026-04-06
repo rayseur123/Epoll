@@ -59,14 +59,6 @@ int ppoll(struct pollfd *fds, nfds_t nfds,
         const struct timespec *délai, const sigset_t *sigmask);
 ```
 Ces fonctions ont la même vocation que select()/pselect(), leurs différences sont donc similaires. A la différence qu'ils ne prennent qu'un tableau de structure `pollfd` représentant les trois types de fd.
-structure de pollfd :
-```
-struct pollfd {
-    int   fd;         /* Descripteur de fichier */
-    short events;     /* Événements attendus    */
-    short revents;    /* Événements détectés    */
-};
-```
 
 Aussi, le parametre `nfds` ne signifie pas la meme chose. nfds represente ici simplement la taille du tableau passé en parametre.
 
@@ -112,4 +104,13 @@ EPOLLET      : ???
 EPOLLONESHOT : ???
 ```
 
-### epoll_wait()
+### epoll_wait() / epoll_pwait()
+Leur declarations :
+```
+int epoll_wait(int epfd, struct epoll_event *events,
+               int maxevents, int timeout);
+int epoll_pwait(int epfd, struct epoll_event *events,
+               int maxevents, int timeout,
+               const sigset_t *sigmask);
+```
+ 
