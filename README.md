@@ -108,13 +108,19 @@ EPOLLONESHOT – désactive le fd dans epfd après un événement (nécessite un
 
 ### epoll_wait() / epoll_pwait()
 
-Attendent qu'un événement se produise sur un fd de l'ensemble `epfd` et remplissent le tableau `events` avec les événements survenus.
-
+Attendent qu'un événement se produise sur un fd de `epfd` et remplissent `events` avec les événements survenus.
 ```c
 int epoll_wait(int epfd, struct epoll_event *events,
                int maxevents, int timeout);
-
 int epoll_pwait(int epfd, struct epoll_event *events,
                 int maxevents, int timeout,
                 const sigset_t *sigmask);
 ```
+
+Deux modes de notification, configurables par fd via `epoll_ctl` :
+
+- **Level Triggered (LT)** — notifie tant que le fd est disponible. (défaut)
+- **Edge Triggered (ET)** — notifie uniquement lors d'un changement d'état.
+
+L'un renvoie l'information de disponibilité uniquement lors d'un changement d'état (ET).
+L'autre renvoie l'information de disponibilité tant que le fd est disponible (LT).
