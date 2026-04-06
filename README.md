@@ -102,7 +102,12 @@ Le dernier parametre est mask de bits permetant de lister les actions a surveill
 en voici la liste : 
 
 ```
-EPOLLIN : Le file descriptor est disponible a la lecture
-EPOLLOUT : Le file descriptor est disponible a l'ecriture
-EPOLLRDHUP : 
+EPOLLIN      : Le file descriptor est disponible a la lecture
+EPOLLOUT     : Le file descriptor est disponible a l'ecriture
+EPOLLRDHUP   : Le coté client (si vous etes le server) a fermé la connexion.
+EPOLLPRI     : Des données urgentes sont disponibles en lecture.
+EPOLLERR     : Une erreur s'est produite sur le file descriptor (toujours actif)
+EPOLLHUP     : Le file descriptor s'est deconecté. Il n'est donc plus utile.
+EPOLLET      : ???
+EPOLLONESHOT : ???
 ```
