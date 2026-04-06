@@ -111,3 +111,5 @@ EPOLLHUP     : Le file descriptor s'est deconecté. Il n'est donc plus utile.
 EPOLLET      : ???
 EPOLLONESHOT : ???
 ```
+
+### epoll_wait()
