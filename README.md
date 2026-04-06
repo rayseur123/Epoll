@@ -2,21 +2,21 @@
 
 ## Description
 
-Ce guide me permet simplement de rassembler la totalité de mes informations sur epoll. Il a donc un objectif personnel mais me permettra aussi d'expliquer de façon plus aisée le fonctionnement de epoll en détail.
+Ce guide rassemble mes notes sur epoll, avec pour objectif personnel de centraliser l'information et de pouvoir l'expliquer clairement.
+
+---
 
 ## select() / pselect()
 
-Avant de comprendre l'intérêt de epoll il faut se pencher sur ses prédécesseurs.
-Ces fonctions ont pour objectif de surveiller et d'indiquer si un fd (file descriptor) est disponible à la lecture / écriture.
+Ces fonctions surveillent un ensemble de file descriptors (fd) et indiquent lesquels sont disponibles en lecture, écriture ou en erreur.
 
-Quelques différences entre select() / pselect() :
+Différences entre `select` et `pselect` :
 
-- `select` utilise la structure `timeval` (secondes, microsecondes) pour représenter le temps.
-- `pselect` utilise la structure `timespec` (secondes, nanosecondes) pour représenter le temps.
-- `select` peut modifier le paramètre timeout pour indiquer le temps restant.
-- `pselect` prend en paramètre `sigmask` (sigset) représentant l'ensemble des signaux à ignorer, sans ça select peut être bloquant.
+- `select` utilise `timeval` (secondes, microsecondes) ; `pselect` utilise `timespec` (secondes, nanosecondes).
+- `select` peut modifier le paramètre `timeout` pour indiquer le temps restant.
+- `pselect` accepte un `sigmask` (sigset) définissant les signaux à ignorer pendant l'attente.
 
-Voici les déclarations de ces fonctions :
+Déclarations :
 
 ```c
 int select(int nfds, fd_set *readfds, fd_set *writefds,
@@ -27,90 +27,94 @@ int pselect(int nfds, fd_set *readfds, fd_set *writefds,
             const sigset_t *sigmask);
 ```
 
-Nous leur passons trois ensembles indépendants de descripteurs à surveiller simultanément. Ces ensembles seront alors modifiés par la fonction pour ne garder que ce qui change d'état, c'est-à-dire ceux devenant disponibles pour leur fonction.
+Les trois ensembles de fd sont surveillés simultanément. À la sortie, ils ne contiennent que les fd dont l'état a changé (ceux devenus disponibles). Si aucun fd n'est disponible, l'ensemble correspondant est mis à NULL.
 
-Si aucun fd n'est disponible, alors l'ensemble concerné sera mis à NULL.
+- `readfds` : fd disponibles en lecture
+- `writefds` : fd disponibles en écriture
+- `exceptfds` : fd en exception (données urgentes / out-of-band / erreur)
 
-- `readfds` représente les fd de lecture
-- `writefds` représente les fd d'écriture
-- `exceptfds` représente les fd d'exception (urgent / out-of-band / erreur)
+`nfds` est le numéro du fd le plus élevé parmi les trois ensembles, plus 1. Les `fd_set` étant des tableaux de bits de taille fixe (1024), ce paramètre limite la recherche à l'intervalle `[0, nfds[` plutôt que `[0, 1024[`, réduisant le nombre d'itérations.
 
-`nfds` est le numéro du plus grand descripteur de fichier des 3 ensembles, plus 1.
-**Pourquoi ?** Les fd_set étant stockés dans un tableau de bits (bitfield) de taille fixe (1024). Sans ce paramètre, la totalité de ces bits devraient être surveillée. Alors que là, la recherche est `0 - ndfs` plutôt que `0 - 1024`. Ce qui réduit grandement le nombre d'itérations.
+`timeout` définit le délai maximum d'attente si aucun fd n'est disponible.
 
-`timeout` représente le temps max que select prendra si aucun fd n'est disponible.
+Macros disponibles pour manipuler les `fd_set` :
 
-En résumé, select renvoie dans les trois fd set les fd disponibles à l'usage sur le moment. Si aucun n'est disponible, select/pselect attendra jusqu'au timeout si besoin.
-
-Certaine macro sont disponible pour editer les fd_set.
 ```
-- FD_ZERO(fd_set *set) - initialise l'ensemble
-- FD_SET(int fd, fd_set *set) - Ajoute fd à l'ensemble
-- FD_CLR(int fd, fd_set *set) - Elimine fd de l'ensemble
-- FD_ISSET(int fd, fd_set *set) - test pour savoir si fd fait parti de l'ensemble
+FD_ZERO(fd_set *set)           – initialise l'ensemble
+FD_SET(int fd, fd_set *set)    – ajoute fd à l'ensemble
+FD_CLR(int fd, fd_set *set)    – retire fd de l'ensemble
+FD_ISSET(int fd, fd_set *set)  – teste si fd est dans l'ensemble
 ```
+
+---
 
 ## poll() / ppoll()
-Avant tout, voici la déclaration de ces deux fonctions :
-```
-int poll(struct pollfd *fds, nfds_t nfds, int délai);
 
-int ppoll(struct pollfd *fds, nfds_t nfds, 
-        const struct timespec *délai, const sigset_t *sigmask);
-```
-Ces fonctions ont la même vocation que select()/pselect(), leurs différences sont donc similaires. A la différence qu'ils ne prennent qu'un tableau de structure `pollfd` représentant les trois types de fd.
+Même vocation que `select()`/`pselect()`, mêmes différences entre les deux variantes. La structure utilisée est différente : un tableau de `pollfd` représente les trois types de fd en un seul paramètre.
 
-Aussi, le parametre `nfds` ne signifie pas la meme chose. nfds represente ici simplement la taille du tableau passé en parametre.
+Déclarations :
+
+```c
+int poll(struct pollfd *fds, nfds_t nfds, int timeout);
+
+int ppoll(struct pollfd *fds, nfds_t nfds,
+          const struct timespec *timeout, const sigset_t *sigmask);
+```
+
+Ici, `nfds` est simplement la taille du tableau passé en paramètre (et non le fd maximum + 1 comme dans `select`).
+
+---
 
 ## epoll
-epoll est une variante de poll qui a pour vocation de rester optimiser malgré le grand nombre de fd géré.
-Ici epoll n'est donc pas une fonction mais une api. Donc un ensemble d'outil pour gerer des taches similaire a poll.
+
+epoll est une API (ensemble de fonctions) conçue pour rester performante quel que soit le nombre de fd gérés, là où `poll` dégrade avec la montée en charge.
 
 ### epoll_create()
-Permet de créer un fd pointant vers l'espace de surveillance alloué de taille `nb`. Cette taille n'est pas absolue, mais elle permet au noyau de dimensionner ses structures de façon plus optimisée.
-Déclaration de epoll_create() :
-```
+
+Crée un fd pointant vers un espace de surveillance. Le paramètre `nb` donne une indication de taille au noyau pour optimiser ses structures internes (non contraignant).
+
+```c
 int epoll_create(int nb);
 ```
 
 ### epoll_ctl()
-Déclaration de epoll_ctl():
-```
-int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event); 
-```
 
-Cette fonction permet d'appliquer l'operation `op` au file descriptor `fd` de l'enssemble `epfd`.
+Applique l'opération `op` sur le fd `fd` dans l'ensemble `epfd`.
 
-voici l'enssemble des operations possible :
-```
-EPOLL_CTL_ADD : Ajoute l'element **fd** dans l'enssembler epfd
-
-EPOLL_CTL_MOD : Change l'event associé au file descriptor **fd**
-
-EPOLL_CTL_DEL : Supprime l'element **fd** de l'enssemble **epfd**
+```c
+int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event);
 ```
 
-Le dernier parametre est mask de bits permetant de lister les actions a surveiller pour ce fd.
-en voici la liste : 
+Opérations disponibles :
 
 ```
-EPOLLIN      : Le file descriptor est disponible a la lecture
-EPOLLOUT     : Le file descriptor est disponible a l'ecriture
-EPOLLRDHUP   : Le coté client (si vous etes le server) a fermé la connexion.
-EPOLLPRI     : Des données urgentes sont disponibles en lecture.
-EPOLLERR     : Une erreur s'est produite sur le file descriptor (toujours actif)
-EPOLLHUP     : Le file descriptor s'est deconecté. Il n'est donc plus utile.
-EPOLLET      : ???
-EPOLLONESHOT : ???
+EPOLL_CTL_ADD  – ajoute fd dans epfd
+EPOLL_CTL_MOD  – modifie l'événement associé à fd
+EPOLL_CTL_DEL  – retire fd de epfd
+```
+
+Le dernier paramètre est un masque de bits listant les événements à surveiller pour ce fd :
+
+```
+EPOLLIN      – fd disponible en lecture
+EPOLLOUT     – fd disponible en écriture
+EPOLLRDHUP   – le client a fermé la connexion (côté serveur)
+EPOLLPRI     – données urgentes disponibles en lecture
+EPOLLERR     – erreur sur le fd (toujours actif, même sans le spécifier)
+EPOLLHUP     – le fd s'est déconnecté
+EPOLLET      – active le mode edge-triggered (notification uniquement au changement d'état)
+EPOLLONESHOT – désactive le fd dans epfd après un événement (nécessite un EPOLL_CTL_MOD pour le réarmer)
 ```
 
 ### epoll_wait() / epoll_pwait()
-Leur declarations :
-```
+
+Attendent qu'un événement se produise sur un fd de l'ensemble `epfd` et remplissent le tableau `events` avec les événements survenus.
+
+```c
 int epoll_wait(int epfd, struct epoll_event *events,
                int maxevents, int timeout);
+
 int epoll_pwait(int epfd, struct epoll_event *events,
-               int maxevents, int timeout,
-               const sigset_t *sigmask);
+                int maxevents, int timeout,
+                const sigset_t *sigmask);
 ```
- 
